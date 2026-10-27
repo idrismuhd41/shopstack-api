@@ -1,1 +1,15 @@
 node_modules
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+.vscode/
+# Test artifacts (never commit these)
+body.json
+bad.json
+patch.json
+*.tmp.json
