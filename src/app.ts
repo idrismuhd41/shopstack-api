@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { requireAPIKey } from './middleware/require-api-key.js';
 import { userRouter } from './routes/user.routes.js';
+import { authRouter } from './routes/auth.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 
 export const app = express();
@@ -13,7 +14,7 @@ export const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json({ limit: '1mb' }));
-app.use(requestLogger); // Task 3 core: observability
+app.use(requestLogger);
 
 // Health endpoint (public)
 app.get('/health', (_req, res) => {
@@ -24,7 +25,10 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Protected API routes (Task 3 bonus: x-api-key)
+// Auth routes — public-facing, NOT gated by API key (rate-limited on /login)
+app.use('/api/auth', authRouter);
+
+// User management routes — API key + JWT gated
 app.use('/api/users', requireAPIKey, userRouter);
 
 // Fallbacks (must be last)

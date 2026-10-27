@@ -1,0 +1,26 @@
+[33mcommit 6c86e71f2a4c902a7aeac6532cf944839de4a069[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: idrismuhd41 <idrismuhd41@gmail.com>
+Date:   Tue Oct 27 12:03:13 2026 +0100
+
+    feat(task-3): modular Express API with observability, error handling, validation, API-key middleware
+
+ .env.example                       |    7 [32m+[m
+ .gitattributes                     |    4 [32m+[m
+ .gitignore                         |   14 [32m+[m
+ bad.json                           |    1 [32m+[m
+ body.json                          |    1 [32m+[m
+ package-lock.json                  | 8532 [32m++++++++[m[31m----------------------------[m
+ package.json                       |   43 [32m+[m[31m-[m
+ src/app.ts                         |   32 [32m+[m
+ src/config/env.ts                  |   20 [32m+[m
+ src/controllers/user.controller.ts |   29 [32m+[m
+ src/middleware/error-handler.ts    |   32 [32m+[m
+ src/middleware/request-logger.ts   |   27 [32m+[m
+ src/middleware/require-api-key.ts  |   17 [32m+[m
+ src/middleware/validate.ts         |   20 [32m+[m
+ src/routes/user.routes.ts          |   12 [32m+[m
+ src/schemas/user.schema.ts         |   11 [32m+[m
+ src/server.ts                      |   14 [32m+[m
+ src/services/user.service.ts       |   61 [32m+[m
+ tsconfig.json                      |   60 [32m+[m[31m-[m
+ 19 files changed, 2228 insertions(+), 6709 deletions(-)
