@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/error-handler.js';
 
 export type UserRole = 'USER' | 'ADMIN';
@@ -7,7 +7,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  passwordHash: string;   // bcrypt hash — NEVER returned in API responses
+  passwordHash: string;
   role: UserRole;
   createdAt: string;
 }
@@ -29,77 +29,123 @@ export interface UpdateUserInput {
   email?: string;
 }
 
-/**
- * In-memory user store for Task 3 / Task 4.
- * Phase 3 (Task 5) will swap this for a Prisma-backed repository.
- */
-const users = new Map<string, User>();
+// Helper: strip passwordHash before returning to callers
+function toSafeUser(user: {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: string;
+  createdAt: Date;
+}): Omit<User, 'passwordHash'> {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role as UserRole,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
 
 export const userService = {
-  list(): Omit<User, 'passwordHash'>[] {
-    return Array.from(users.values()).map(({ passwordHash: _, ...rest }) => rest);
+  async list(): Promise<Omit<User, 'passwordHash'>[]> {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return users.map(toSafeUser);
   },
 
-  getById(id: string): Omit<User, 'passwordHash'> {
-    const user = users.get(id);
+  async getById(id: string): Promise<Omit<User, 'passwordHash'>> {
+    const user = await prisma.user.findUnique({ where: { id } });
     if (!user) throw new AppError(404, `User ${id} not found`);
-    const { passwordHash: _, ...safe } = user;
-    return safe;
+    return toSafeUser(user);
   },
 
-  create(input: CreateUserInput): Omit<User, 'passwordHash'> {
-    const duplicate = Array.from(users.values()).find((u) => u.email === input.email);
+  async create(input: CreateUserInput): Promise<Omit<User, 'passwordHash'>> {
+    const duplicate = await prisma.user.findUnique({ where: { email: input.email } });
     if (duplicate) throw new AppError(409, 'Email already exists');
 
-    const user: User = {
-      id: randomUUID(),
-      name: input.name,
-      email: input.email,
-      passwordHash: '',  // Task 3 users have no password — that's fine
-      role: 'USER',
-      createdAt: new Date().toISOString(),
-    };
-    users.set(user.id, user);
-    const { passwordHash: _, ...safe } = user;
-    return safe;
+    try {
+      const user = await prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          passwordHash: '',
+          role: 'USER',
+        },
+      });
+      return toSafeUser(user);
+    } catch (err) {
+      // Prisma unique constraint violation (P2002) — handles race condition
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new AppError(409, 'Email already exists');
+      }
+      throw err;
+    }
   },
 
-  createWithPassword(input: CreateUserWithPasswordInput): Omit<User, 'passwordHash'> {
-    const duplicate = Array.from(users.values()).find((u) => u.email === input.email);
+  async createWithPassword(
+    input: CreateUserWithPasswordInput,
+  ): Promise<Omit<User, 'passwordHash'>> {
+    const duplicate = await prisma.user.findUnique({ where: { email: input.email } });
     if (duplicate) throw new AppError(409, 'Email already exists');
 
-    const user: User = {
-      id: randomUUID(),
-      name: input.name,
-      email: input.email,
-      passwordHash: input.passwordHash,
-      role: input.role ?? 'USER',
-      createdAt: new Date().toISOString(),
-    };
-    users.set(user.id, user);
-    const { passwordHash: _, ...safe } = user;
-    return safe;
+    try {
+      const user = await prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          passwordHash: input.passwordHash,
+          role: input.role ?? 'USER',
+        },
+      });
+      return toSafeUser(user);
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new AppError(409, 'Email already exists');
+      }
+      throw err;
+    }
   },
 
-  update(id: string, input: UpdateUserInput): Omit<User, 'passwordHash'> {
-    const existing = users.get(id);
+  async update(id: string, input: UpdateUserInput): Promise<Omit<User, 'passwordHash'>> {
+    const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) throw new AppError(404, `User ${id} not found`);
-    const updated: User = { ...existing, ...input };
-    users.set(id, updated);
-    const { passwordHash: _, ...safe } = updated;
-    return safe;
+
+    try {
+      const updated = await prisma.user.update({
+        where: { id },
+        data: input,
+      });
+      return toSafeUser(updated);
+    } catch (err) {
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new AppError(409, 'Email already exists');
+      }
+      throw err;
+    }
   },
 
-  delete(id: string): void {
-    if (!users.delete(id)) throw new AppError(404, `User ${id} not found`);
+  async delete(id: string): Promise<void> {
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new AppError(404, `User ${id} not found`);
+    await prisma.user.delete({ where: { id } });
   },
 
   /**
    * Internal-only method — returns the full user INCLUDING passwordHash.
    * Used exclusively by auth.service for login credential checks.
-   * The "findByEmail" method is intentionally NOT exposed in the controller layer.
    */
-  findByEmailInternal(email: string): User | null {
-    return Array.from(users.values()).find((u) => u.email === email) ?? null;
+  async findByEmailInternal(email: string): Promise<User | null> {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return null;
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      passwordHash: user.passwordHash,
+      role: user.role as UserRole,
+      createdAt: user.createdAt.toISOString(),
+    };
   },
 };

@@ -11,7 +11,7 @@ export const authController = {
       const { name, email, password } = req.body;
 
       const passwordHash = await hashPassword(password);
-      const user = userService.createWithPassword({ name, email, passwordHash });
+      const user = await userService.createWithPassword({ name, email, passwordHash });
 
       res.status(201).json({ data: user });
     },
@@ -21,7 +21,7 @@ export const authController = {
     async (req: Request<{}, {}, LoginDto>, res: Response): Promise<void> => {
       const { email, password } = req.body;
 
-      const internal = userService.findByEmailInternal(email);
+      const internal = await userService.findByEmailInternal(email);
       if (!internal) {
         throw new AppError(401, 'Invalid email or password');
       }
@@ -42,9 +42,9 @@ export const authController = {
     },
   ),
 
-  me(req: Request, res: Response): void {
+  me: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.sub;
-    const user = userService.getById(userId);
+    const user = await userService.getById(userId);
     res.json({ data: user });
-  },
+  }),
 };

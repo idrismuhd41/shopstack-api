@@ -13,3 +13,25 @@ body.json
 bad.json
 patch.json
 *.tmp.json
+/src/generated/prisma
+# Test artifacts
+prod.json
+body.json
+bad.json
+patch.json
+reg.json
+reg2.json
+reg3.json
+login.json
+login2.json
+login3.json
+wrong.json
+admin.json
+u.json
+order.json
+bad-order.json
+bad-order2.json
+p1.json
+p2.json
+p3.json
+*.tmp.json
