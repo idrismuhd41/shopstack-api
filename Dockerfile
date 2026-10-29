@@ -16,7 +16,7 @@ COPY prisma ./prisma
 RUN npm ci
 
 # Generate Prisma Client — uses schema.prisma
-RUN npx prisma generate
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy source code and TypeScript config
 COPY tsconfig.json ./
