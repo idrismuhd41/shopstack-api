@@ -40,10 +40,9 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: npx prisma generate --schema=./prisma/schema.prisma
         env:
           DATABASE_URL: postgresql://shopstack:shopstack_dev@localhost:5432/shopstack_test?schema=public
-
       - name: Typecheck
         run: npm run typecheck
 
