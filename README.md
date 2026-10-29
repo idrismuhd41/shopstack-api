@@ -1,0 +1,1 @@
+![CI](https://github.com/YOUR_USERNAME/shopstack-api/actions/workflows/ci.yml/badge.svg)
